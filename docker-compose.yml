@@ -1,0 +1,44 @@
+version: "3.7"
+
+services:
+  client:
+    build: ./client
+    volumes:
+      - ./client/public:/opt/hacklab/public
+      - ./client/src:/opt/hacklab/src
+      - ./client/package.json:/opt/hacklab/package.json
+      - ./client/package-lock.json:/opt/hacklab/package-lock.json
+      - ./client/tsconfig.json:/opt/hacklab/tsconfig.json
+    environment:
+      REACT_APP_API_URL: http://localhost:4000
+    command: npm start
+    user: "${UID}:${GID}"
+    ports:
+      - 3000:3000
+
+  server:
+    build: ./server
+    volumes:
+      - ./server/hacklab_webauthn:/opt/hacklab/hacklab_webauthn
+      - ./server/migrations:/opt/hacklab/migrations
+      - ./server/Pipfile:/opt/hacklab/Pipfile
+      - ./server/Pipfile.lock:/opt/hacklab/Pipfile.lock
+    environment:
+      FLASK_APP: hacklab_webauthn.app
+      FLASK_ENV: development
+      DATABASE_URL: postgres://hacklab:webauthn@postgres/hacklab
+    command: flask run --host=0.0.0.0 --port 4000
+    user: "${UID}:${GID}"
+    ports:
+      - 4000:4000
+
+  postgres:
+    image: postgres:11-alpine
+    environment:
+      POSTGRES_USER: hacklab
+      POSTGRES_PASSWORD: webauthn
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
