@@ -1,35 +1,43 @@
-import React, { FunctionComponent } from "react"
-import { Card, Form, Input, Button } from "antd"
-import FontAwesomeIcon from "../components/FontAwesomeIcon"
-import { faAt, faUser, faFingerprint } from "@fortawesome/free-solid-svg-icons"
+import React, { FunctionComponent, useState } from "react"
+import { Card, Result, PageHeader } from "antd"
 
-const prefixIconStyle = { color: "rgba(0,0,0,0.25)" }
+import { delay } from "../utils"
+import RegisterForm, { RegisterValues } from "./RegisterForm"
 
-const RegisterCard: FunctionComponent = () => (
-  <Card title="Register" headStyle={{ textAlign: "center" }}>
-    <Form layout="vertical">
-      <Form.Item required>
-        <Input
-          size="large"
-          prefix={<FontAwesomeIcon type={faAt} style={prefixIconStyle} />}
-          placeholder="E-mail address"
+const initialValues: RegisterValues = { email: "", name: "" }
+
+const RegisterCard: FunctionComponent = () => {
+  const [success, setSuccess] = useState(false)
+
+  const handleSubmit = async (values: RegisterValues) => {
+    console.log({ values })
+    await delay(500)
+    setSuccess(true)
+  }
+
+  const handleBack = success ? () => setSuccess(false) : undefined
+
+  return (
+    <Card
+      title={
+        <PageHeader
+          title="Register"
+          onBack={handleBack}
+          style={{ padding: 0 }}
         />
-      </Form.Item>
-      <Form.Item required>
-        <Input
-          size="large"
-          prefix={<FontAwesomeIcon type={faUser} style={prefixIconStyle} />}
-          placeholder="Full name"
+      }
+    >
+      {success ? (
+        <Result
+          status="success"
+          title="Thanks for registering"
+          subTitle="Now try logging in!"
         />
-      </Form.Item>
-      <Form.Item>
-        <Button type="primary" htmlType="submit" block size="large">
-          <FontAwesomeIcon type={faFingerprint} />
-          Register
-        </Button>
-      </Form.Item>
-    </Form>
-  </Card>
-)
+      ) : (
+        <RegisterForm initialValues={initialValues} onSubmit={handleSubmit} />
+      )}
+    </Card>
+  )
+}
 
 export default RegisterCard
