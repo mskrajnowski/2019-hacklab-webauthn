@@ -1,5 +1,12 @@
 import React, { FunctionComponent } from "react"
+import { Result } from "antd"
 
-const App: FunctionComponent = () => <h1>WebAuthn</h1>
+const App: FunctionComponent = () => (
+  <Result
+    status="success"
+    title="WebAuthn Demo"
+    subTitle="Ant design enabled"
+  />
+)
 
 export default App
