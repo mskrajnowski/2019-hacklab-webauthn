@@ -5,6 +5,7 @@ import { faAt, faUser, faFingerprint } from "@fortawesome/free-solid-svg-icons"
 import * as yup from "yup"
 
 import FontAwesomeIcon from "../components/FontAwesomeIcon"
+import { SchemaValue } from "../utils"
 
 const prefixIconStyle = { color: "rgba(0,0,0,0.25)" }
 
@@ -19,9 +20,7 @@ const schema = yup.object({
     .required("Full name is required"),
 })
 
-export type RegisterValues = typeof schema extends yup.ObjectSchema<infer V>
-  ? V
-  : never
+export type RegisterValues = SchemaValue<typeof schema>
 
 export interface RegisterFormProps {
   initialValues: RegisterValues
