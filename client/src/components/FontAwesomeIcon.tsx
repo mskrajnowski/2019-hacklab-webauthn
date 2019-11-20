@@ -5,11 +5,12 @@ import { IconDefinition } from "@fortawesome/free-solid-svg-icons"
 
 import FontAwesomeSVG from "./FontAwesomeSVG"
 
-export interface FaIconProps extends Omit<IconProps, "type"> {
+export interface FontAwesomeIconProps
+  extends Omit<IconProps, "type" | "theme" | "twoToneColor" | "component"> {
   type: IconDefinition
 }
 
-const FontAwesomeIcon: FunctionComponent<FaIconProps> = ({
+const FontAwesomeIcon: FunctionComponent<FontAwesomeIconProps> = ({
   type,
   ...iconProps
 }) => (
