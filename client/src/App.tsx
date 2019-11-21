@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useState, useCallback } from "react"
-import { Result, Layout, notification, PageHeader } from "antd"
+import { Layout, notification, PageHeader } from "antd"
 import { faFingerprint } from "@fortawesome/free-solid-svg-icons"
 
 import FontAwesomeIcon from "./components/FontAwesomeIcon"
