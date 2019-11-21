@@ -1,4 +1,4 @@
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -27,17 +27,17 @@ class User(db.Model):
 
     @classmethod
     def identify(cls, id):
-        return cls.query.get(id)
+        return cls.query.get(UUID(id))
 
     @property
     def identity(self):
-        return self.id
+        return self.id.hex
 
     @property
     def rolenames(self):
         return []
 
-    def is_valid():
+    def is_valid(self):
         return True
 
 
