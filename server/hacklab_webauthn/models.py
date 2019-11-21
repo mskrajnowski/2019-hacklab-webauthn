@@ -39,3 +39,15 @@ class User(db.Model):
 
     def is_valid():
         return True
+
+
+class Authenticator(db.Model):
+    __tablename__ = "authenticators"
+
+    id = db.Column(pg.UUID(as_uuid=True), primary_key=True, default=uuid4)
+    name = db.Column(db.String, nullable=False, default="authenticator")
+
+    user_id = db.Column(
+        pg.UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False
+    )
+    user = db.relationship("User", backref="authenticators")
