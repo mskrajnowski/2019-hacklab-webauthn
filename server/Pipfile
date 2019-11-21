@@ -18,6 +18,7 @@ psycopg2 = "*"
 flask-praetorian = "*"
 flask-marshmallow = "*"
 flask-cors = "*"
+marshmallow-sqlalchemy = "*"
 
 [requires]
 python_version = "3.7"
