@@ -1,9 +1,12 @@
 import "antd/dist/antd.css"
+import axios from "axios"
 import React from "react"
 import ReactDOM from "react-dom"
 
 import App from "./App"
 import * as serviceWorker from "./serviceWorker"
+
+axios.defaults.baseURL = "http://localhost:4000/api"
 
 ReactDOM.render(<App />, document.getElementById("root"))
 

@@ -1,7 +1,7 @@
 import React, { FunctionComponent, useState } from "react"
-import { Card, Result, PageHeader } from "antd"
+import { Card, Result, PageHeader, notification } from "antd"
+import axios from "axios"
 
-import { delay } from "../utils"
 import RegisterForm, { RegisterValues } from "./RegisterForm"
 
 const initialValues: RegisterValues = { email: "", name: "" }
@@ -9,10 +9,26 @@ const initialValues: RegisterValues = { email: "", name: "" }
 const RegisterCard: FunctionComponent = () => {
   const [success, setSuccess] = useState(false)
 
-  const handleSubmit = async (values: RegisterValues) => {
-    console.log({ values })
-    await delay(500)
-    setSuccess(true)
+  const handleSubmit = async ({ email, name }: RegisterValues) => {
+    try {
+      const {
+        data: { token },
+      } = await axios.post("/register", {
+        email,
+        name,
+      })
+
+      await axios.post("/register/challenge", {
+        token,
+      })
+
+      setSuccess(true)
+    } catch (err) {
+      notification.error({
+        message: "Registration failed",
+        description: err.message,
+      })
+    }
   }
 
   const handleBack = success ? () => setSuccess(false) : undefined
