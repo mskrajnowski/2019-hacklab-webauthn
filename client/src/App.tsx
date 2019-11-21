@@ -1,4 +1,9 @@
-import React, { FunctionComponent, useState, useCallback } from "react"
+import React, {
+  FunctionComponent,
+  useState,
+  useCallback,
+  useEffect,
+} from "react"
 import { Layout, notification, PageHeader } from "antd"
 import { faFingerprint } from "@fortawesome/free-solid-svg-icons"
 
@@ -9,10 +14,24 @@ import AuthenticatedSection from "./sections/AuthenticatedSection"
 import AnonymousSection from "./sections/AnonymousSection"
 
 const App: FunctionComponent = () => {
-  const [user, setUser] = useState<User | null>(null)
+  const [token, setToken] = useState(localStorage.getItem("auth.token") || "")
+  const [user, setUser] = useState<User | null>(() => {
+    const userJson = localStorage.getItem("auth.user")
+    return userJson ? JSON.parse(userJson) : null
+  })
   const [isLoggingIn, setLoggingIn] = useState(false)
   const [isLoggingOut, setLoggingOut] = useState(false)
   const isLoggedIn = !!user
+
+  useEffect(() => {
+    if (token && user) {
+      localStorage.setItem("auth.token", token)
+      localStorage.setItem("auth.user", JSON.stringify(user))
+    } else {
+      localStorage.removeItem("auth.token")
+      localStorage.removeItem("auth.user")
+    }
+  }, [token, user])
 
   const logIn = useCallback(async () => {
     setLoggingIn(true)
@@ -25,6 +44,7 @@ const App: FunctionComponent = () => {
         name: "John Doe",
       }
 
+      setToken("foo")
       setUser(user)
       notification.success({
         message: `Hello ${user.name}!`,
@@ -44,6 +64,7 @@ const App: FunctionComponent = () => {
     setLoggingOut(true)
     try {
       await delay(500)
+      setToken("")
       setUser(null)
 
       notification.success({
@@ -62,7 +83,15 @@ const App: FunctionComponent = () => {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoggedIn, isLoggingIn, isLoggingOut, logIn, logOut }}
+      value={{
+        token,
+        user,
+        isLoggedIn,
+        isLoggingIn,
+        isLoggingOut,
+        logIn,
+        logOut,
+      }}
     >
       <Layout style={{ minHeight: "100vh" }}>
         <Layout.Content>

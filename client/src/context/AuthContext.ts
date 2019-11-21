@@ -7,6 +7,7 @@ export interface User {
 }
 
 export interface AuthContextValue {
+  readonly token: string
   readonly user: User | null
   readonly isLoggedIn: boolean
   readonly isLoggingIn: boolean
@@ -16,6 +17,7 @@ export interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue>({
+  token: "",
   user: null,
   isLoggedIn: false,
   isLoggingIn: false,
