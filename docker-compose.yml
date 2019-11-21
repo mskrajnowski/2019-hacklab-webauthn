@@ -21,8 +21,6 @@ services:
     volumes:
       - ./server/hacklab_webauthn:/opt/hacklab/hacklab_webauthn
       - ./server/migrations:/opt/hacklab/migrations
-      - ./server/Pipfile:/opt/hacklab/Pipfile
-      - ./server/Pipfile.lock:/opt/hacklab/Pipfile.lock
     environment:
       FLASK_APP: hacklab_webauthn.app
       FLASK_ENV: development
