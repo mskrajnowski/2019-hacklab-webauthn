@@ -1,7 +1,9 @@
+from uuid import uuid4
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_security import UserMixin, RoleMixin
+import sqlalchemy.dialects.postgresql as pg
 
 db = SQLAlchemy()
 migrate = Migrate(db=db)
@@ -12,21 +14,28 @@ def init_app(app: Flask):
     migrate.init_app(app)
 
 
-roles_users = db.Table('roles_users',
-    db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
-    db.Column('role_id', db.Integer(), db.ForeignKey('role.id')))
+class User(db.Model):
+    __tablename__ = "users"
 
+    id = db.Column(pg.UUID(as_uuid=True), primary_key=True, default=uuid4)
+    email = db.Column(db.String, unique=True, nullable=False)
+    name = db.Column(db.String, nullable=False)
 
-class Role(db.Model, RoleMixin):
-    id = db.Column(db.Integer(), primary_key=True)
-    name = db.Column(db.String(80), unique=True)
-    description = db.Column(db.String(255))
+    @classmethod
+    def lookup(cls, username):
+        return cls.query.filter_by(email=username).one_or_none()
 
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), unique=True)
-    password = db.Column(db.String(255))
-    active = db.Column(db.Boolean())
-    confirmed_at = db.Column(db.DateTime())
-    roles = db.relationship('Role', secondary=roles_users,
-                            backref=db.backref('users', lazy='dynamic'))
+    @classmethod
+    def identify(cls, id):
+        return cls.query.get(id)
+
+    @property
+    def identity(self):
+        return self.id
+
+    @property
+    def rolenames(self):
+        return []
+
+    def is_valid():
+        return True
