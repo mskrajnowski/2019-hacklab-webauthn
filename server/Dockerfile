@@ -13,7 +13,7 @@ RUN apk add --no-cache \
 
 COPY ./Pipfile ./Pipfile.lock ./
 ENV PIPENV_VENV_IN_PROJECT=true
-RUN pipenv install --deploy
+RUN pipenv install --dev --deploy
 
 COPY ./hacklab_webauthn ./hacklab_webauthn
 COPY ./migrations ./migrations
