@@ -46,6 +46,9 @@ class Authenticator(db.Model):
 
     id = db.Column(pg.UUID(as_uuid=True), primary_key=True, default=uuid4)
     name = db.Column(db.String, nullable=False, default="authenticator")
+    credential_id = db.Column(db.String, nullable=False)
+    public_key = db.Column(db.String, nullable=False)
+    sign_count = db.Column(db.Integer, nullable=False)
 
     user_id = db.Column(
         pg.UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False

@@ -1,8 +1,8 @@
 import React, { FunctionComponent, useState } from "react"
 import { Card, Result, PageHeader, notification } from "antd"
-import axios from "axios"
 
 import RegisterForm, { RegisterValues } from "./RegisterForm"
+import { register } from "../services/webauthn"
 
 const initialValues: RegisterValues = { email: "", name: "" }
 
@@ -11,17 +11,7 @@ const RegisterCard: FunctionComponent = () => {
 
   const handleSubmit = async ({ email, name }: RegisterValues) => {
     try {
-      const {
-        data: { token },
-      } = await axios.post("/register", {
-        email,
-        name,
-      })
-
-      await axios.post("/register/challenge", {
-        token,
-      })
-
+      await register(email, name)
       setSuccess(true)
     } catch (err) {
       notification.error({
