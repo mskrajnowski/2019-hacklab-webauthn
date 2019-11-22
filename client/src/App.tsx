@@ -15,6 +15,9 @@ import AnonymousSection from "./sections/AnonymousSection"
 import { login } from "./services/webauthn"
 
 const App: FunctionComponent = () => {
+  const [lastEmail, setLastEmail] = useState(
+    localStorage.getItem("auth.lastEmail") || ""
+  )
   const [token, setToken] = useState(localStorage.getItem("auth.token") || "")
   const [user, setUser] = useState<User | null>(() => {
     const userJson = localStorage.getItem("auth.user")
@@ -28,6 +31,7 @@ const App: FunctionComponent = () => {
     if (token && user) {
       localStorage.setItem("auth.token", token)
       localStorage.setItem("auth.user", JSON.stringify(user))
+      localStorage.setItem("auth.lastEmail", user.email)
     } else {
       localStorage.removeItem("auth.token")
       localStorage.removeItem("auth.user")
@@ -42,6 +46,7 @@ const App: FunctionComponent = () => {
 
       setToken(token)
       setUser(user)
+      setLastEmail(user.email)
       notification.success({
         message: `Hello ${user.name}!`,
         description: "You've successfully logged in",
@@ -80,6 +85,7 @@ const App: FunctionComponent = () => {
   return (
     <AuthContext.Provider
       value={{
+        lastEmail,
         token,
         user,
         isLoggedIn,

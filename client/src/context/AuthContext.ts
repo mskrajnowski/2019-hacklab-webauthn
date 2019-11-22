@@ -7,6 +7,7 @@ export interface User {
 }
 
 export interface AuthContextValue {
+  readonly lastEmail: string
   readonly token: string
   readonly user: User | null
   readonly isLoggedIn: boolean
@@ -17,6 +18,7 @@ export interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue>({
+  lastEmail: "",
   token: "",
   user: null,
   isLoggedIn: false,

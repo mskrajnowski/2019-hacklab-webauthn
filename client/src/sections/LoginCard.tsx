@@ -4,10 +4,9 @@ import { Card, PageHeader, notification } from "antd"
 import LoginForm, { LoginValues } from "./LoginForm"
 import AuthContext from "../context/AuthContext"
 
-const initialValues: LoginValues = { email: "" }
-
 const LoginCard: FunctionComponent = () => {
-  const { logIn } = useContext(AuthContext)
+  const { logIn, lastEmail } = useContext(AuthContext)
+  const initialValues: LoginValues = { email: lastEmail }
 
   const handleSubmit = async ({ email }: LoginValues) => {
     try {
