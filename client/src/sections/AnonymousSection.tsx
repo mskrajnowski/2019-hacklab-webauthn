@@ -1,12 +1,12 @@
 import React, { FunctionComponent } from "react"
 import { Divider } from "antd"
 
-import LoginButton from "./LoginButton"
+import LoginCard from "./LoginCard"
 import RegisterCard from "./RegisterCard"
 
 const AnonymousSection: FunctionComponent = () => (
   <>
-    <LoginButton />
+    <LoginCard />
     <Divider>or</Divider>
     <RegisterCard />
   </>

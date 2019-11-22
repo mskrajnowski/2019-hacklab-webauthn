@@ -1,7 +1,7 @@
 import React, { FunctionComponent } from "react"
 import { Formik, FormikHelpers } from "formik"
 import { Form, Input, SubmitButton } from "formik-antd"
-import { faAt, faUser, faFingerprint } from "@fortawesome/free-solid-svg-icons"
+import { faAt, faFingerprint } from "@fortawesome/free-solid-svg-icons"
 import * as yup from "yup"
 
 import FontAwesomeIcon from "../components/FontAwesomeIcon"
@@ -14,26 +14,22 @@ const schema = yup.object({
     .string()
     .email("Please enter a valid e-mail address")
     .required("E-mail address is required"),
-  name: yup
-    .string()
-    .trim()
-    .required("Full name is required"),
 })
 
-export type RegisterValues = SchemaValue<typeof schema>
+export type LoginValues = SchemaValue<typeof schema>
 
-export interface RegisterFormProps {
-  initialValues: RegisterValues
-  onSubmit: (values: RegisterValues) => void | Promise<void>
+export interface LoginFormProps {
+  initialValues: LoginValues
+  onSubmit: (values: LoginValues) => void | Promise<void>
 }
 
-const RegisterForm: FunctionComponent<RegisterFormProps> = ({
+const LoginForm: FunctionComponent<LoginFormProps> = ({
   initialValues,
   onSubmit,
 }) => {
   const handleSubmit = async (
-    rawValues: RegisterValues,
-    { setSubmitting }: FormikHelpers<RegisterValues>
+    rawValues: LoginValues,
+    { setSubmitting }: FormikHelpers<LoginValues>
   ) => {
     const values = schema.cast(rawValues)
 
@@ -62,18 +58,9 @@ const RegisterForm: FunctionComponent<RegisterFormProps> = ({
             />
           </Form.Item>
 
-          <Form.Item name="name">
-            <Input
-              name="name"
-              size="large"
-              prefix={<FontAwesomeIcon type={faUser} style={prefixIconStyle} />}
-              placeholder="Full name"
-            />
-          </Form.Item>
-
           <SubmitButton type="primary" block size="large">
             {!isSubmitting && <FontAwesomeIcon type={faFingerprint} />}
-            Register
+            Log in
           </SubmitButton>
         </Form>
       )}
@@ -81,4 +68,4 @@ const RegisterForm: FunctionComponent<RegisterFormProps> = ({
   )
 }
 
-export default RegisterForm
+export default LoginForm

@@ -20,10 +20,10 @@ export async function register(email: string, name: string) {
   })
 }
 
-export async function login() {
+export async function login(email: string) {
   const {
     data: { token: challengeToken, options },
-  } = await axios.post<LoginData>("/login")
+  } = await axios.post<LoginData>("/login", { email })
 
   const credential = (await navigator.credentials.get({
     publicKey: encodeRequestOptions(options),
@@ -58,8 +58,16 @@ interface ServerPublicKeyCredentialCreationOptions
 }
 
 interface ServerPublicKeyCredentialRequestOptions
-  extends Omit<PublicKeyCredentialRequestOptions, "challenge"> {
+  extends Omit<
+    PublicKeyCredentialRequestOptions,
+    "challenge" | "allowCredentials"
+  > {
   challenge: string
+  allowCredentials?: Array<
+    Omit<PublicKeyCredentialDescriptor, "id"> & {
+      id: string
+    }
+  >
 }
 
 function encodeCreateOptions(
@@ -80,9 +88,18 @@ function encodeCreateOptions(
 function encodeRequestOptions(
   options: ServerPublicKeyCredentialRequestOptions
 ): PublicKeyCredentialRequestOptions {
-  const { challenge } = options
+  const { challenge, allowCredentials } = options
 
-  return { ...options, challenge: base64.decode(challenge) }
+  return {
+    ...options,
+    challenge: base64.decode(challenge),
+    allowCredentials:
+      allowCredentials &&
+      allowCredentials.map(credential => ({
+        ...credential,
+        id: base64.decode(credential.id.replace(/_/g, "/").replace(/-/g, "+")),
+      })),
+  }
 }
 
 function serializeCreatedCredential(credential: PublicKeyCredential) {

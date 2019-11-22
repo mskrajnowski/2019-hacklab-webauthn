@@ -12,7 +12,7 @@ export interface AuthContextValue {
   readonly isLoggedIn: boolean
   readonly isLoggingIn: boolean
   readonly isLoggingOut: boolean
-  logIn(): Promise<void>
+  logIn(email: string): Promise<void>
   logOut(): Promise<void>
 }
 
@@ -22,7 +22,7 @@ const AuthContext = createContext<AuthContextValue>({
   isLoggedIn: false,
   isLoggingIn: false,
   isLoggingOut: false,
-  async logIn() {},
+  async logIn(email: string) {},
   async logOut() {},
 })
 

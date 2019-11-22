@@ -34,11 +34,11 @@ const App: FunctionComponent = () => {
     }
   }, [token, user])
 
-  const logIn = useCallback(async () => {
+  const logIn = useCallback(async (email: string) => {
     setLoggingIn(true)
 
     try {
-      const { token, user } = await login()
+      const { token, user } = await login(email)
 
       setToken(token)
       setUser(user)
