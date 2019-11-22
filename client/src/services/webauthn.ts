@@ -16,13 +16,37 @@ export async function register(email: string, name: string) {
 
   await axios.post("/register/challenge", {
     token,
-    credential: serializeCredential(credential),
+    credential: serializeCreatedCredential(credential),
   })
+}
+
+export async function login() {
+  const {
+    data: { token: challengeToken, options },
+  } = await axios.post<LoginData>("/login")
+
+  const credential = (await navigator.credentials.get({
+    publicKey: encodeRequestOptions(options),
+  })) as PublicKeyCredential
+
+  const {
+    data: { token, user },
+  } = await axios.post("/login/challenge", {
+    token: challengeToken,
+    credential: serializeRequestedCredential(credential),
+  })
+
+  return { token, user }
 }
 
 interface RegisterData {
   token: string
   options: ServerPublicKeyCredentialCreationOptions
+}
+
+interface LoginData {
+  token: string
+  options: ServerPublicKeyCredentialRequestOptions
 }
 
 interface ServerPublicKeyCredentialCreationOptions
@@ -31,6 +55,11 @@ interface ServerPublicKeyCredentialCreationOptions
   user: Omit<PublicKeyCredentialUserEntity, "id"> & {
     id: string
   }
+}
+
+interface ServerPublicKeyCredentialRequestOptions
+  extends Omit<PublicKeyCredentialRequestOptions, "challenge"> {
+  challenge: string
 }
 
 function encodeCreateOptions(
@@ -48,22 +77,21 @@ function encodeCreateOptions(
   }
 }
 
-function serializeCredential(credential: PublicKeyCredential) {
+function encodeRequestOptions(
+  options: ServerPublicKeyCredentialRequestOptions
+): PublicKeyCredentialRequestOptions {
+  const { challenge } = options
+
+  return { ...options, challenge: base64.decode(challenge) }
+}
+
+function serializeCreatedCredential(credential: PublicKeyCredential) {
   const { id, rawId, type } = credential
   const {
     attestationObject,
     clientDataJSON,
   } = credential.response as AuthenticatorAttestationResponse
   const clientExtensions = credential.getClientExtensionResults()
-
-  console.log({
-    id,
-    rawId,
-    type,
-    attestationObject,
-    clientDataJSON: JSON.parse(new TextDecoder().decode(clientDataJSON)),
-    clientExtensions,
-  })
 
   return {
     id,
@@ -73,4 +101,30 @@ function serializeCredential(credential: PublicKeyCredential) {
     clientData: base64.encode(clientDataJSON),
     registrationClientExtensions: JSON.stringify(clientExtensions),
   }
+}
+
+function serializeRequestedCredential(credential: PublicKeyCredential) {
+  const { id, rawId, type } = credential
+  const {
+    authenticatorData,
+    signature,
+    clientDataJSON,
+  } = credential.response as AuthenticatorAssertionResponse
+  const clientExtensions = credential.getClientExtensionResults()
+
+  return {
+    id,
+    rawId: base64.encode(rawId),
+    type,
+    authData: base64.encode(authenticatorData),
+    clientData: base64.encode(clientDataJSON),
+    assertionClientExtensions: JSON.stringify(clientExtensions),
+    signature: hexEncode(signature),
+  }
+}
+
+function hexEncode(buf: ArrayBuffer) {
+  return Array.from(new Uint8Array(buf))
+    .map(x => ("0" + x.toString(16)).substr(-2))
+    .join("")
 }

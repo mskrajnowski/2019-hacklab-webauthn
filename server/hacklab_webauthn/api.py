@@ -8,6 +8,8 @@ from flask_marshmallow import Marshmallow
 from marshmallow import fields, post_load
 from sqlalchemy.exc import IntegrityError
 import webauthn
+import jwt
+import pendulum
 
 from .models import db, User, Authenticator
 from .util import generate_challenge
@@ -55,17 +57,21 @@ def register():
         challenge=challenge,
     )
 
+    options = webauthn.WebAuthnMakeCredentialOptions(
+        challenge=challenge,
+        rp_name=app.config["WEBAUTHN_RP_NAME"],
+        rp_id=app.config["WEBAUTHN_RP_ID"],
+        user_id=user.id.hex,
+        username=user.email,
+        display_name=user.name,
+        icon_url=app.config["WEBAUTHN_ICON_URL"],
+    ).registration_dict
+
+    options["authenticatorSelection"] = {"requireResidentKey": True}
+
     return {
         "token": token,
-        "options": webauthn.WebAuthnMakeCredentialOptions(
-            challenge=challenge,
-            rp_name=app.config["WEBAUTHN_RP_NAME"],
-            rp_id=app.config["WEBAUTHN_RP_ID"],
-            user_id=user.id.hex,
-            username=user.email,
-            display_name=user.name,
-            icon_url=app.config["WEBAUTHN_ICON_URL"],
-        ).registration_dict,
+        "options": options,
     }
 
 
@@ -86,8 +92,6 @@ def register_challenge():
     except Exception as exc:
         return {"error": str(exc)}, 401
 
-    app.logger.info("token: %r", token)
-
     response = webauthn.WebAuthnRegistrationResponse(
         rp_id=app.config["WEBAUTHN_RP_ID"],
         origin=app.config["WEBAUTHN_ORIGIN"],
@@ -105,8 +109,8 @@ def register_challenge():
     )
 
     authenticator = Authenticator(
-        credential_id=credential.credential_id,
-        public_key=credential.public_key,
+        credential_id=str(credential.credential_id, "utf-8"),
+        public_key=str(credential.public_key, "utf-8"),
         sign_count=credential.sign_count,
     )
 
@@ -119,3 +123,98 @@ def register_challenge():
         return "", 409
 
     return "", 201
+
+
+@bp.route("/login", methods=["post"])
+def login():
+    now = pendulum.now("UTC")
+    challenge = generate_challenge()
+    token = jwt.encode(
+        {
+            "iat": now.int_timestamp,
+            "exp": now.add(minutes=10).int_timestamp,
+            "jti": str(uuid4()),
+            "challenge": challenge,
+        },
+        guard.encode_key,
+        guard.encode_algorithm,
+    ).decode("utf-8")
+
+    return {
+        "token": token,
+        "options": {
+            "challenge": challenge,
+            "rpId": app.config["WEBAUTHN_RP_ID"],
+            "timeout": 60000,
+        },
+    }
+
+
+class LoginChallengeSchema(ma.Schema):
+    token = fields.Str(required=True)
+    credential = fields.Dict(required=True)
+
+
+class AuthenticatedUserSchema(ma.Schema):
+    class Meta:
+        model = User
+        fields = ("id", "email", "name")
+
+
+@bp.route("/login/challenge", methods=["post"])
+def login_challenge():
+    schema = LoginChallengeSchema()
+    data = schema.load(request.get_json())
+
+    try:
+        token = jwt.decode(
+            data["token"],
+            guard.encode_key,
+            algorithms=guard.allowed_algorithms,
+        )
+    except Exception as exc:
+        return {"error": str(exc)}, 401
+
+    authenticator = Authenticator.query.filter_by(
+        credential_id=data["credential"]["id"]
+    ).first()
+
+    if not authenticator:
+        return {"error": "Authenticator not found"}, 401
+
+    webauthn_user = webauthn.WebAuthnUser(
+        user_id=authenticator.user.id,
+        username=authenticator.user.email,
+        display_name=authenticator.user.name,
+        icon_url=app.config["WEBAUTHN_ICON_URL"],
+        credential_id=authenticator.credential_id,
+        public_key=authenticator.public_key,
+        sign_count=authenticator.sign_count,
+        rp_id=app.config["WEBAUTHN_RP_ID"],
+    )
+
+    response = webauthn.WebAuthnAssertionResponse(
+        webauthn_user=webauthn_user,
+        challenge=token["challenge"],
+        assertion_response=data["credential"],
+        origin=app.config["WEBAUTHN_ORIGIN"],
+    )
+
+    try:
+        sign_count = response.verify()
+    except Exception as exc:
+        return {"error": str(exc)}, 400
+
+    authenticator.sign_count = sign_count
+    db.session.add(authenticator)
+    db.session.commit()
+
+    user_schema = AuthenticatedUserSchema()
+    return (
+        {
+            "token": guard.encode_jwt_token(authenticator.user),
+            "user": user_schema.dump(authenticator.user),
+        },
+        200,
+    )
+

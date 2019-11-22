@@ -12,6 +12,7 @@ import AuthContext, { User } from "./context/AuthContext"
 import { delay } from "./utils"
 import AuthenticatedSection from "./sections/AuthenticatedSection"
 import AnonymousSection from "./sections/AnonymousSection"
+import { login } from "./services/webauthn"
 
 const App: FunctionComponent = () => {
   const [token, setToken] = useState(localStorage.getItem("auth.token") || "")
@@ -37,14 +38,9 @@ const App: FunctionComponent = () => {
     setLoggingIn(true)
 
     try {
-      await delay(500)
-      const user = {
-        id: "1",
-        email: "john@doe.com",
-        name: "John Doe",
-      }
+      const { token, user } = await login()
 
-      setToken("foo")
+      setToken(token)
       setUser(user)
       notification.success({
         message: `Hello ${user.name}!`,
