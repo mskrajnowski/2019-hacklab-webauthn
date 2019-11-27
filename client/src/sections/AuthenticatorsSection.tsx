@@ -1,28 +1,27 @@
-import React, { FunctionComponent } from "react"
-import { Card, Row, Col, Icon, PageHeader, Button } from "antd"
-import FontAwesomeIcon from "../components/FontAwesomeIcon"
+import React, {
+  FunctionComponent,
+  useContext,
+  useCallback,
+  ReactNode,
+} from "react"
+import { Card, Row, Col, Icon, PageHeader, Button, Tag, Timeline } from "antd"
 import { faFingerprint } from "@fortawesome/free-solid-svg-icons"
 
-interface Authenticator {
-  id: string
-  name: string
-  type: "key" | "biometric"
-}
-
-const mockAuthenticators: Authenticator[] = [
-  { id: "asd012", name: "yubikey", type: "key" },
-  { id: "wer345", name: "phone", type: "biometric" },
-]
+import FontAwesomeIcon from "../components/FontAwesomeIcon"
+import AuthenticatorsContext, {
+  Authenticator,
+} from "../context/AuthenticatorsContext"
+import AuthContext from "../context/AuthContext"
 
 const AuthenticatorsSection: FunctionComponent = () => {
-  const authenticators = mockAuthenticators
+  const { authenticators, addAuthenticator } = useContext(AuthenticatorsContext)
 
   return (
     <>
       <PageHeader
         title="Your authenticators"
         extra={[
-          <Button key="add" icon="plus">
+          <Button key="add" icon="plus" onClick={addAuthenticator}>
             Add
           </Button>,
         ]}
@@ -30,21 +29,9 @@ const AuthenticatorsSection: FunctionComponent = () => {
       />
 
       <Row gutter={[16, 16]} style={{ marginBottom: "16px" }}>
-        {authenticators.map(({ id, name, type }) => (
-          <Col key={id} span={12}>
-            <Card
-              actions={[
-                // <Icon type="edit" key="edit" />,
-                <Icon type="delete" key="delete" />,
-              ]}
-            >
-              <Card.Meta
-                avatar={typeIcon(type)}
-                title={id}
-                // title={name}
-                // description={id}
-              />
-            </Card>
+        {authenticators.map(authenticator => (
+          <Col key={authenticator.id} span={24}>
+            <AuthenticatorCard authenticator={authenticator} />
           </Col>
         ))}
       </Row>
@@ -52,7 +39,59 @@ const AuthenticatorsSection: FunctionComponent = () => {
   )
 }
 
-function typeIcon(type: Authenticator["type"]) {
+interface AuthenticatorCardProps {
+  authenticator: Authenticator
+}
+
+const AuthenticatorCard: FunctionComponent<AuthenticatorCardProps> = ({
+  authenticator,
+}) => {
+  const { removeAuthenticator } = useContext(AuthenticatorsContext)
+  const { id, name, created_at, last_used_at } = authenticator
+
+  const { authenticator: currentAuthenticator } = useContext(AuthContext)
+  const isCurrent = currentAuthenticator && id === currentAuthenticator.id
+
+  const handleRemove = useCallback(() => removeAuthenticator(id), [
+    id,
+    removeAuthenticator,
+  ])
+
+  const actions: ReactNode[] = [
+    // <Icon type="edit" key="edit" />,
+  ]
+
+  if (!isCurrent) {
+    actions.push(<Icon type="delete" key="delete" onClick={handleRemove} />)
+  }
+
+  return (
+    <Card actions={actions}>
+      <Card.Meta
+        avatar={typeIcon("key")}
+        title={
+          <>
+            {name} {isCurrent && <Tag>current</Tag>}
+          </>
+        }
+        description={
+          <Timeline style={{ marginTop: "16px" }}>
+            <Timeline.Item style={{ margin: 0 }}>
+              Added {new Date(created_at).toLocaleString()}
+            </Timeline.Item>
+            {last_used_at && (
+              <Timeline.Item style={{ margin: 0 }}>
+                Last used {new Date(last_used_at).toLocaleString()}
+              </Timeline.Item>
+            )}
+          </Timeline>
+        }
+      />
+    </Card>
+  )
+}
+
+function typeIcon(type: "key" | "biometric") {
   const commonProps = { style: { fontSize: "2em" } }
 
   switch (type) {

@@ -45,6 +45,7 @@ const LoginForm: FunctionComponent<LoginFormProps> = ({
       initialValues={initialValues}
       validationSchema={schema}
       onSubmit={handleSubmit}
+      enableReinitialize
     >
       {({ isSubmitting }) => (
         <Form>

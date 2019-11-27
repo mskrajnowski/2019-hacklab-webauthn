@@ -1,18 +1,22 @@
 from uuid import UUID, uuid4
+from datetime import datetime, timezone
 
-from flask import current_app as app, request, Flask, Blueprint
+from flask import current_app as app, request, Flask, Blueprint, jsonify
 from flask_cors import CORS
-from flask_praetorian import Praetorian
-from flask_praetorian.constants import AccessType
+from flask_praetorian import (
+    Praetorian,
+    auth_required,
+    current_user,
+    current_user_id,
+    current_custom_claims,
+)
 from flask_marshmallow import Marshmallow
 from marshmallow import fields, post_load
 from sqlalchemy.exc import IntegrityError
 import webauthn
-import jwt
-import pendulum
 
 from .models import db, User, Authenticator
-from .util import generate_challenge
+from .util import random_string
 
 
 cors = CORS()
@@ -28,12 +32,7 @@ def init_app(app: Flask, url_prefix=""):
     app.register_blueprint(bp, url_prefix=url_prefix)
 
 
-@bp.route("/hello", methods=["get"])
-def hello():
-    return {"hello": "world"}
-
-
-class RegisterSchema(ma.Schema):
+class RegisterChallengeSchema(ma.Schema):
     class Meta:
         model = User
         fields = ("email", "name")
@@ -43,15 +42,15 @@ class RegisterSchema(ma.Schema):
         return User(id=uuid4(), **data)
 
 
-@bp.route("/register", methods=["post"])
-def register():
-    schema = RegisterSchema()
+@bp.route("/register/challenge", methods=["post"])
+def register_challenge():
+    schema = RegisterChallengeSchema()
     user = schema.load(request.get_json())
+    challenge = random_string()
 
-    challenge = generate_challenge()
     token = guard.encode_jwt_token(
         user,
-        is_registration_token=True,
+        is_registration=True,
         email=user.email,
         name=user.name,
         challenge=challenge,
@@ -74,28 +73,30 @@ def register():
     }
 
 
-class RegisterChallengeSchema(ma.Schema):
-    token = fields.Str(required=True)
-    credential = fields.Dict(required=True)
+class RegisterSchema(ma.Schema):
+    name = fields.String(default="authenticator")
+    id = fields.String(required=True)
+    rawId = fields.String(required=True)
+    type = fields.String(required=True)
+    attObj = fields.String(required=True)
+    clientData = fields.String(required=True)
+    registrationClientExtensions = fields.String(required=True)
 
 
-@bp.route("/register/challenge", methods=["post"])
-def register_challenge():
-    schema = RegisterChallengeSchema()
-    data = schema.load(request.get_json())
+@bp.route("/register", methods=["post"])
+@auth_required
+def register():
+    claims = current_custom_claims()
+    if not claims.get("is_registration", False):
+        return "", 401
 
-    try:
-        token = guard.extract_jwt_token(
-            data["token"], access_type=AccessType.register
-        )
-    except Exception as exc:
-        return {"error": str(exc)}, 401
+    data = RegisterSchema().load(request.get_json())
 
     response = webauthn.WebAuthnRegistrationResponse(
         rp_id=app.config["WEBAUTHN_RP_ID"],
         origin=app.config["WEBAUTHN_ORIGIN"],
-        registration_response=data["credential"],
-        challenge=token["challenge"],
+        registration_response=data,
+        challenge=claims["challenge"],
         none_attestation_permitted=True,
     )
 
@@ -105,10 +106,11 @@ def register_challenge():
         return {"error": str(exc)}, 400
 
     user = User(
-        id=UUID(token["id"]), email=token["email"], name=token["name"],
+        id=UUID(current_user_id()), email=claims["email"], name=claims["name"],
     )
 
     authenticator = Authenticator(
+        name=data["name"],
         credential_id=str(credential.credential_id, "utf-8"),
         public_key=str(credential.public_key, "utf-8"),
         sign_count=credential.sign_count,
@@ -125,53 +127,19 @@ def register_challenge():
     return "", 201
 
 
-class LoginSchema(ma.Schema):
+class LoginChallengeSchema(ma.Schema):
     email = fields.Email(required=True)
 
 
-@bp.route("/login", methods=["post"])
-def login():
-    schema = LoginSchema()
-    data = schema.load(request.get_json())
-    token, options = login_with_email(data["email"])
+@bp.route("/login/challenge", methods=["post"])
+def login_challenge():
+    data = LoginChallengeSchema().load(request.get_json())
+    email = data["email"]
 
-    return {
-        "token": token,
-        "options": options,
-    }
+    fake_user = User.generate_fake(email=email)
+    user = User.query.filter_by(email=email).first() or fake_user
 
-
-def login_without_email():
-    now = pendulum.now("UTC")
-    challenge = generate_challenge()
-    token = jwt.encode(
-        dict(
-            iat=now.int_timestamp,
-            exp=now.add(minutes=10).int_timestamp,
-            jti=str(uuid4()),
-            is_login=True,
-            challenge=challenge,
-        ),
-        guard.encode_key,
-        guard.encode_algorithm,
-    ).decode("utf-8")
-
-    return (
-        token,
-        {
-            "challenge": challenge,
-            "rpId": app.config["WEBAUTHN_RP_ID"],
-            "timeout": 60000,
-        },
-    )
-
-
-def login_with_email(email: str):
-    user = User.query.filter_by(email=email).first() or User.generate_fake(
-        email=email
-    )
-
-    challenge = generate_challenge()
+    challenge = random_string()
     webauthn_users = [
         webauthn.WebAuthnUser(
             user_id=authenticator.user.id,
@@ -194,41 +162,44 @@ def login_with_email(email: str):
         user, is_login=True, email=email, challenge=challenge
     )
 
-    return token, options
+    return {
+        "token": token,
+        "options": options,
+    }
 
 
-class LoginChallengeSchema(ma.Schema):
-    token = fields.Str(required=True)
-    credential = fields.Dict(required=True)
+class LoginSchema(ma.Schema):
+    id = fields.String(required=True)
+    rawId = fields.String(required=True)
+    type = fields.String(required=True)
+    authData = fields.String(required=True)
+    clientData = fields.String(required=True)
+    assertionClientExtensions = fields.String(required=True)
+    signature = fields.String(required=True)
 
 
-class AuthenticatedUserSchema(ma.Schema):
+class UserSchema(ma.Schema):
     class Meta:
         model = User
         fields = ("id", "email", "name")
 
 
-@bp.route("/login/challenge", methods=["post"])
-def login_challenge():
-    schema = LoginChallengeSchema()
-    data = schema.load(request.get_json())
+@bp.route("/login", methods=["post"])
+@auth_required
+def login():
+    claims = current_custom_claims()
+    if not claims.get("is_login", False):
+        return "", 401
 
-    try:
-        token = guard.extract_jwt_token(data["token"], access_type=None)
+    data = LoginSchema().load(request.get_json())
 
-        if not token.get("is_login", False):
-            raise Exception("Not a login token")
-    except Exception:
-        return {"error": "invalid token"}, 401
+    email = claims["email"]
+    credential_id = data["id"]
 
-    email = token.get("email", "")
-    credential_id = data["credential"]["id"]
-
-    authenticator_filters = [Authenticator.credential_id == credential_id]
-    if email:
-        authenticator_filters.append(Authenticator.user.has(email=email))
-
-    authenticator = Authenticator.query.filter(*authenticator_filters).first()
+    authenticator = Authenticator.query.filter(
+        Authenticator.credential_id == credential_id,
+        Authenticator.user.has(email=email),
+    ).first()
 
     if not authenticator:
         return {"error": "authenticator not found"}, 401
@@ -246,8 +217,8 @@ def login_challenge():
 
     response = webauthn.WebAuthnAssertionResponse(
         webauthn_user=webauthn_user,
-        challenge=token["challenge"],
-        assertion_response=data["credential"],
+        challenge=claims["challenge"],
+        assertion_response=data,
         origin=app.config["WEBAUTHN_ORIGIN"],
     )
 
@@ -257,14 +228,111 @@ def login_challenge():
         return {"error": str(exc)}, 401
 
     authenticator.sign_count = sign_count
+    authenticator.last_used_at = datetime.now(timezone.utc)
     db.session.add(authenticator)
     db.session.commit()
 
-    user_schema = AuthenticatedUserSchema()
     return (
         {
             "token": guard.encode_jwt_token(authenticator.user),
-            "user": user_schema.dump(authenticator.user),
+            "user": UserSchema().dump(authenticator.user),
+            "authenticator": AuthenticatorSchema().dump(authenticator),
         },
         200,
     )
+
+
+class AuthenticatorSchema(ma.ModelSchema):
+    class Meta:
+        model = Authenticator
+        fields = ("id", "name", "created_at", "last_used_at")
+
+
+@bp.route("/authenticators", methods=["get"])
+@auth_required
+def list_authenticators():
+    schema = AuthenticatorSchema()
+    authenticators = Authenticator.query.filter(
+        Authenticator.user_id == UUID(current_user_id())
+    ).order_by(Authenticator.created_at)
+    return jsonify(schema.dump(authenticators, many=True)), 200
+
+
+@bp.route("/authenticators/challenge", methods=["post"])
+@auth_required
+def add_authenticator_challenge():
+    user = current_user()
+    challenge = random_string()
+
+    token = guard.encode_jwt_token(
+        user, is_add_authenticator=True, challenge=challenge,
+    )
+
+    options = webauthn.WebAuthnMakeCredentialOptions(
+        challenge=challenge,
+        rp_name=app.config["WEBAUTHN_RP_NAME"],
+        rp_id=app.config["WEBAUTHN_RP_ID"],
+        user_id=user.id.hex,
+        username=user.email,
+        display_name=user.name,
+        icon_url=app.config["WEBAUTHN_ICON_URL"],
+        attestation="none",
+    ).registration_dict
+
+    return {
+        "token": token,
+        "options": options,
+    }
+
+
+@bp.route("/authenticators", methods=["post"])
+@auth_required
+def add_authenticator():
+    claims = current_custom_claims()
+    if not claims.get("is_add_authenticator", False):
+        return "", 401
+
+    data = RegisterSchema().load(request.get_json())
+    user = current_user()
+
+    response = webauthn.WebAuthnRegistrationResponse(
+        rp_id=app.config["WEBAUTHN_RP_ID"],
+        origin=app.config["WEBAUTHN_ORIGIN"],
+        registration_response=data,
+        challenge=claims["challenge"],
+        none_attestation_permitted=True,
+    )
+
+    try:
+        credential = response.verify()
+    except Exception as exc:
+        return {"error": str(exc)}, 400
+
+    authenticator = Authenticator(
+        name=data["name"],
+        credential_id=str(credential.credential_id, "utf-8"),
+        public_key=str(credential.public_key, "utf-8"),
+        sign_count=credential.sign_count,
+    )
+
+    user.authenticators.append(authenticator)
+    db.session.add(user)
+
+    try:
+        db.session.commit()
+    except IntegrityError:
+        return "", 409
+
+    return AuthenticatorSchema().dump(authenticator), 201
+
+
+@bp.route("/authenticators/<id>", methods=["delete"])
+@auth_required
+def delete_authenticator(id):
+    authenticator = Authenticator.query.filter_by(
+        id=id, user_id=current_user_id()
+    ).first_or_404()
+
+    db.session.delete(authenticator)
+    db.session.commit()
+    return "", 204

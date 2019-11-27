@@ -1,17 +1,20 @@
-import React, { FunctionComponent, useState } from "react"
+import React, { FunctionComponent, useState, useContext } from "react"
 import { Card, Result, PageHeader, notification } from "antd"
 
 import RegisterForm, { RegisterValues } from "./RegisterForm"
 import { register } from "../services/webauthn"
+import AuthContext from "../context/AuthContext"
 
 const initialValues: RegisterValues = { email: "", name: "" }
 
 const RegisterCard: FunctionComponent = () => {
   const [success, setSuccess] = useState(false)
+  const { setLastEmail } = useContext(AuthContext)
 
   const handleSubmit = async ({ email, name }: RegisterValues) => {
     try {
       await register(email, name)
+      setLastEmail(email)
       setSuccess(true)
     } catch (err) {
       notification.error({

@@ -6,12 +6,13 @@ import LogoutButton from "./LogoutButton"
 import FontAwesomeIcon from "../components/FontAwesomeIcon"
 import { faUserCircle } from "@fortawesome/free-solid-svg-icons"
 import AuthenticatorsSection from "./AuthenticatorsSection"
+import { AuthenticatorsProvider } from "../context/AuthenticatorsContext"
 
 const AuthenticatedSection: FunctionComponent = () => {
   const { user } = useContext(AuthContext)
 
   return (
-    <>
+    <AuthenticatorsProvider>
       <Result
         status="info"
         icon={<FontAwesomeIcon type={faUserCircle} />}
@@ -20,7 +21,7 @@ const AuthenticatedSection: FunctionComponent = () => {
       />
       <AuthenticatorsSection />
       <LogoutButton />
-    </>
+    </AuthenticatorsProvider>
   )
 }
 
