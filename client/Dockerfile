@@ -12,6 +12,5 @@ COPY ./src ./src
 EXPOSE 3000
 
 ENV PORT=3000
-ENV HTTPS=true
 
 CMD npm start
