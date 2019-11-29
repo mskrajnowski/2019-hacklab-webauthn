@@ -9,7 +9,8 @@ RUN apk add --no-cache \
   musl-dev \
   libffi-dev \
   postgresql-dev \
-  openssl-dev
+  openssl-dev \
+  git
 
 COPY ./Pipfile ./Pipfile.lock ./
 ENV PIPENV_VENV_IN_PROJECT=true
