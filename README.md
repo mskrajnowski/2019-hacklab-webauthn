@@ -1,32 +1,25 @@
 # Hacklab - WebAuthn
 
-A demo project for implementing WebAuthn passwordless authentication end-to-end.
+A demo project for implementing WebAuthn passwordless authentication.
 
-## Features
+## Setup
 
-1. Registration
+1. Install docker and docker-compose
+2. `docker-compose up`
 
-    - email + password
-    - email + token
-
-2. Single factor authentication
-
-    - email + password
-    - email + token
-    - token only
-
-3. Multi factor authentication
-
-    - email + password + TOTP
-    - email + password + token
-    - email + token + PIN or biometric
-    - token + PIN or biometric
-
-4. Email verification
-5. Password reset
-6. Recovery keys
-7. Token management
-8. Session management
+> **Linux permissions**
+>
+> On Linux you might also want to make containers run as your user, so they don't create files owned by root:
+>
+> 1. create a `.env` with
+>
+>     ```
+>     export UID=$(id -u)
+>     export GID=$(id -g)
+>     ```
+>
+> 2. add `user: "${UID}:${GID}"` to `client` and `server` services in `docker-compose.yml`
+> 3. `source .env` before running `docker-compose` in any shell
 
 ## References
 

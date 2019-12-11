@@ -12,7 +12,6 @@ services:
     environment:
       REACT_APP_API_URL: http://localhost:4000
     command: npm start
-    user: "${UID}:${GID}"
     ports:
       - 3000:3000
 
@@ -26,7 +25,6 @@ services:
       FLASK_ENV: development
       DATABASE_URL: postgres://hacklab:webauthn@postgres/hacklab
     command: flask run --host=0.0.0.0 --port 4000
-    user: "${UID}:${GID}"
     ports:
       - 4000:4000
 
